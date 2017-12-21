@@ -1,0 +1,86 @@
+diff --git a/content-api/src/main/java/com/atex/ace/caching/EvictionEventProcessor.java b/content-api/src/main/java/com/atex/ace/caching/EvictionEventProcessor.java
+index bc8c1ca6c..f12c013eb 100644
+--- a/content-api/src/main/java/com/atex/ace/caching/EvictionEventProcessor.java
++++ b/content-api/src/main/java/com/atex/ace/caching/EvictionEventProcessor.java
+@@ -105,33 +105,33 @@ public class EvictionEventProcessor
+         try {
+             switch (event.getType()) {
+                 case CONTENT_UPDATED:
+-                    LOG.fine(format("Evicting '%s' from hangerInfoCache: ", id));
++                    LOG.fine(format("Evicting '%s' from hangerInfoCache: " + System.currentTimeMillis(), id));
+                     com.atex.ace.content.ContentId cid1 = fromString(id);
+                     invalidate = () -> contentCache.invalidateIfNewer(cid1, event.getRevision());
+                     break;
+                 case CONTENT_DELETED:
+-                    LOG.fine(format("Evicting '%s' from hangerInfoCache: ", id));
++                    LOG.fine(format("Evicting '%s' from hangerInfoCache: " + System.currentTimeMillis(), id));
+                     com.atex.ace.content.ContentId cid2 = fromString(id);
+                     invalidate = () -> contentCache.invalidate(cid2);
+                     break;
+                 case VERSION_CREATED:
+-                    LOG.fine(format("Evicting '%s' from aspectsHangerCache: ", id));
++                    LOG.fine(format("Evicting '%s' from aspectsHangerCache: " + System.currentTimeMillis(), id));
+                     ContentVersionId vcid1 = fromVersionedString(id);
+                     invalidate = () -> versionCache.invalidateIfNegative(vcid1);
+                     break;
+                 case VERSION_DELETED:
+-                    LOG.fine(format("Evicting '%s' from aspectsHangerCache: ", id));
++                    LOG.fine(format("Evicting '%s' from aspectsHangerCache: " + System.currentTimeMillis(), id));
+                     ContentVersionId vcid2 = fromVersionedString(id);
+                     invalidate = () -> versionCache.invalidate(vcid2);
+                     break;
+                 case ALIAS_DELETED:
+-                    LOG.fine(format("Evicting '%s' from aliasCache: ", id));
++                    LOG.fine(format("Evicting '%s' from aliasCache: " + System.currentTimeMillis(), id));
+                     Alias a1 = Alias.fromString(id);
+                     invalidate = () -> aliasCache.invalidate((a) -> a.getAlias()
+                                                                      .equals(a1));
+                     break;
+                 case ALIAS_CREATED:
+-                    LOG.fine(format("Evicting '%s' from aliasCache: ", id));
++                    LOG.fine(format("Evicting '%s' from aliasCache: " + System.currentTimeMillis(), id));
+                     Alias a2 = Alias.fromString(id);
+                     invalidate = () -> aliasCache.invalidateIfNegative((a) -> a.getAlias()
+                                                                                .equals(a2));
+diff --git a/content-api/src/main/java/com/atex/ace/ws/service/WebServiceUtil.java b/content-api/src/main/java/com/atex/ace/ws/service/WebServiceUtil.java
+index a98e96141..8f7fe3a78 100644
+--- a/content-api/src/main/java/com/atex/ace/ws/service/WebServiceUtil.java
++++ b/content-api/src/main/java/com/atex/ace/ws/service/WebServiceUtil.java
+@@ -753,7 +753,11 @@ public class WebServiceUtil
+             }
+             else
+             {
+-                return getContentManager().update(contentId, data, subject);
++                WriteResult update = getContentManager().update(contentId, data, subject);
++                LOGGER.info(String.format("[LATENCY_CHECK] Updated content %s @ %d",
++                        update.getContentId(),
++                        System.currentTimeMillis()));
++                return update;
+             }
+         }
+         catch (ContentModifiedException e) {
+diff --git a/content-api/src/test/java/com/atex/ace/ws/client/WSClient.java b/content-api/src/test/java/com/atex/ace/ws/client/WSClient.java
+index 7284aed33..6684d5074 100644
+--- a/content-api/src/test/java/com/atex/ace/ws/client/WSClient.java
++++ b/content-api/src/test/java/com/atex/ace/ws/client/WSClient.java
+@@ -939,7 +939,7 @@ public class WSClient
+     public void waitForChangelist() {
+         try {
+             // TODO: 2017-12-18 Replace with something less naive
+-            Thread.sleep(666);
++            Thread.sleep(2000);
+         } catch (InterruptedException e) {
+             e.printStackTrace();
+         }
+diff --git a/server-content-service/content-service-defaults.yml b/server-content-service/content-service-defaults.yml
+index 92ca01962..4ced68ceb 100644
+--- a/server-content-service/content-service-defaults.yml
++++ b/server-content-service/content-service-defaults.yml
+@@ -156,6 +156,7 @@ logging:
+   loggers:
+     com.atex.ace.caching: FINE
+     org.reflections: ERROR
++    com.atex.ace.caching: FINE
+   appenders:
+     - type: console
+       threshold: TRACE
